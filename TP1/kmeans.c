@@ -19,20 +19,30 @@ Questões:
 
 */
 
-#define N 10000000;
-#define K 4;
+#define N 10000000
+#define K 4
 
-struct Point
+typedef struct point
 {
     float x;
     float y;
+    int nCluster;
 } Point;
 
-struct Cluster
+typedef struct array_points
 {
-    Point center;
-    Point values[N]; // Demasiados valores
-    int size;
+    Point arrays[N];
+} Array_points;
+
+typedef struct array_centroids
+{
+    Point centroids[K];
+} Array_centroids;
+
+typedef struct Cluster
+{
+    int *array_pos;
+    int centroid; // Pos of centroid in the array
 } Cluster;
 
 /*
@@ -48,26 +58,41 @@ void inicializa(...) {
         <<cluster_i_coordenada_x>> = <<ponto_i_coordenada_x>>
         <<cluster_i_coordenada_y>> = <<ponto_i_coordenada_y>>
     }
+}*/
+
+void init(Array_points *novo)
+{
 }
 
-int main (){
+void determine_new_centroid(Cluster c)
+{
+    printf("Hello");
+}
+
+// Vai dar raia, não dá para saber em que cluster estava:
+void update_cluster_points(Array_points *allpoints, Array_centroids *allcentroids, Cluster *clusters)
+{
+}
+
+void main()
+{
+    Cluster clusters[K];
     int points_changed;
-    clusters = inicializa(); //Já temos 4 * (conjuntos de pontos e um centroide)
 
-    do{
+    Array_points *array;
+
+    // clusters = inicializa(); // Já temos 4 * (conjuntos de pontos e um centroide)
+    init(array);
+
+        do
+    {
         points_changed = 0;
+        for (int i = 0; i < K; i++)
+        {
+            determine_new_centroid(clusters[i]);
+        }
 
-        /calcular o centroide
-        /mudar em função da distância
+        // update_cluster_points();
 
-    }while(points_changed != 0);
-
-
+    } while (points_changed != 0);
 }
-
-
-
-
-
-
-*/
