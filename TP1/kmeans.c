@@ -116,7 +116,16 @@ int update_cluster_points(Point *allpoints, Point *allcentroids, Cluster *cluste
     {
 
         int current_cluster = allpoints[i]->nCluster;
-        float diff = determineDistance(allpoints[i], allcentroids[current_cluster]);
+        float diff;
+        if (current_cluster == -1)
+        {
+            diff = 100;
+        }
+        else
+        {
+            diff = determineDistance(allpoints[i], allcentroids[current_cluster]);
+            printf("%f\n", diff);
+        }
 
         // calcula a distância para cada um dos centroids
         for (int j = 0; j < K; j++)
@@ -144,34 +153,31 @@ void main()
     Point *centroids = createArrayCentroids();
     init(array_points, centroids);
 
-    /*for (int i = 0; i < 4; i++)
-    {
-        printf("Point: ");
-        printPoint(array_points[i]);
-        printf("Centroid: ");
-        printPoint(centroids[i]);
-    }*/
-
     points_changed = update_cluster_points(array_points, centroids, clusters);
     printf("%d\n", points_changed);
 
-    /*for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 4; i++)
+    {
+        printf("Centroid: ");
+        printPoint(centroids[i]);
+    }
+    for (int i = 0; i < 8; i++)
     {
         printf("Point: ");
         printPoint(array_points[i]);
-        printf("Centroid: ");
-        printPoint(centroids[i]);
-    }*/
+    }
 
     do
     {
         points_changed = 0;
         for (int i = 0; i < K; i++)
         {
-            determine_new_centroid(clusters[i]);
+            // determine_new_centroid(clusters[i]);
         }
 
-        // update_cluster_points();
+        // points_changed = update_cluster_points(array_points, centroids, clusters);
 
     } while (points_changed != 0);
+
+    // gcc -O2 kmeans.c -o kmeans -lm
 }
