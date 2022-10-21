@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 // Criar amostras e iniciar os clusters -> algoritmo enunciado
 
@@ -28,11 +29,6 @@ typedef struct point
     float y;
     int nCluster;
 } * Point;
-
-/*typedef struct array_centroids
-{
-    Point centroids[K];
-} Array_centroids;*/
 
 typedef struct Cluster
 {
@@ -102,9 +98,41 @@ void determine_new_centroid(Cluster c)
     printf("Hello");
 }
 
-// Vai dar raia, não dá para saber em que cluster estava:
-void update_cluster_points(Point *allpoints, Point *allcentroids, Cluster *clusters)
+float determineDistance(Point p, Point centroid)
 {
+    float diff_x = (p->x) - (centroid->x);
+    float diff_y = (p->y) - (centroid->y);
+    float aux = pow(diff_x, 2) + pow(diff_y, 2);
+
+    return sqrtf(aux);
+}
+
+// Vai dar raia, não dá para saber em que cluster estava:
+int update_cluster_points(Point *allpoints, Point *allcentroids, Cluster *clusters)
+{
+    int points_changed = 0;
+    float diff_temp;
+    for (int i = 0; i < N; i++)
+    {
+
+        int current_cluster = allpoints[i]->nCluster;
+        float diff = determineDistance(allpoints[i], allcentroids[current_cluster]);
+
+        // calcula a distância para cada um dos centroids
+        for (int j = 0; j < K; j++)
+        {
+            // determina a distância entre cada ponto e cada cluster
+            diff_temp = determineDistance(allpoints[i], allcentroids[j]);
+            // verifica se deve mudar o número do cluster ou não...
+            if (diff_temp < diff && j != current_cluster)
+            {
+                diff = diff_temp;
+                points_changed++;
+                allpoints[i]->nCluster = j;
+            }
+        }
+    }
+    return points_changed;
 }
 
 void main()
@@ -115,6 +143,17 @@ void main()
     Point *array_points = createArrayPoints();
     Point *centroids = createArrayCentroids();
     init(array_points, centroids);
+
+    /*for (int i = 0; i < 4; i++)
+    {
+        printf("Point: ");
+        printPoint(array_points[i]);
+        printf("Centroid: ");
+        printPoint(centroids[i]);
+    }*/
+
+    points_changed = update_cluster_points(array_points, centroids, clusters);
+    printf("%d\n", points_changed);
 
     /*for (int i = 0; i < 4; i++)
     {
