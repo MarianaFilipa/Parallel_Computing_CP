@@ -27,17 +27,12 @@ typedef struct point
     float x;
     float y;
     int nCluster;
-} Point;
+} * Point;
 
-typedef struct array_points
-{
-    Point arrays[N];
-} Array_points;
-
-typedef struct array_centroids
+/*typedef struct array_centroids
 {
     Point centroids[K];
-} Array_centroids;
+} Array_centroids;*/
 
 typedef struct Cluster
 {
@@ -60,8 +55,46 @@ void inicializa(...) {
     }
 }*/
 
-void init(Array_points *novo)
+// Function that allows use to print out the value of a Point:
+void printPoint(Point p)
 {
+    printf("x = %f / y = %f / nCluster = %d \n", p->x, p->y, p->nCluster);
+}
+
+// Function that returns a new array of Points:
+Point *createArrayPoints(void)
+{
+    Point *array_points = malloc(sizeof(Point) * N);
+    return array_points;
+}
+
+// Function that returns a new array of Centroids:
+Point *createArrayCentroids(void)
+{
+    Point *array_centroids = malloc(sizeof(Point) * K);
+    return array_centroids;
+}
+
+// Function where the array of points and the array of centroids are populated:
+void init(Point *array_points, Point *array_centroids)
+{
+    // Create new points:
+    for (int i = 0; i < N; i++)
+    {
+        array_points[i] = (Point)malloc(sizeof(struct point));
+        array_points[i]->x = (float)rand() / RAND_MAX;
+        array_points[i]->y = (float)rand() / RAND_MAX;
+        array_points[i]->nCluster = -1;
+    }
+
+    // Assign each point to a cluster:
+    for (int j = 0; j < K; j++)
+    {
+        array_centroids[j] = (Point)malloc(sizeof(struct point));
+        array_centroids[j]->x = array_points[j]->x;
+        array_centroids[j]->y = array_points[j]->y;
+        array_centroids[j]->nCluster = -1;
+    }
 }
 
 void determine_new_centroid(Cluster c)
@@ -70,7 +103,7 @@ void determine_new_centroid(Cluster c)
 }
 
 // Vai dar raia, não dá para saber em que cluster estava:
-void update_cluster_points(Array_points *allpoints, Array_centroids *allcentroids, Cluster *clusters)
+void update_cluster_points(Point *allpoints, Point *allcentroids, Cluster *clusters)
 {
 }
 
@@ -79,12 +112,19 @@ void main()
     Cluster clusters[K];
     int points_changed;
 
-    Array_points *array;
+    Point *array_points = createArrayPoints();
+    Point *centroids = createArrayCentroids();
+    init(array_points, centroids);
 
-    // clusters = inicializa(); // Já temos 4 * (conjuntos de pontos e um centroide)
-    init(array);
+    /*for (int i = 0; i < 4; i++)
+    {
+        printf("Point: ");
+        printPoint(array_points[i]);
+        printf("Centroid: ");
+        printPoint(centroids[i]);
+    }*/
 
-        do
+    do
     {
         points_changed = 0;
         for (int i = 0; i < K; i++)
