@@ -16,3 +16,20 @@ Este trabalho tem como objetivo avaliar a aprendizagem das técnicas de otimiza�
 (i) Desempenho do código (50%)
 (ii) Otimizações realizadas e justificação (30%)
 (iii) Legibilidade do código e relatório (20%)
+
+
+
+v2 remoção da op sqrt no calculo da distancia
+v3 remover determinação de distancia inicial e menos um acesso à memória - menos um miss
+
+
+ver dependencias assembly
+analisar complexidade
+localidade espacial e temporal se existe ou se é possivel ter
+vetorização
+
+loop-unroll comparação das distancias  -> tira jumps
+
+
+
+perguntas : se é necessária a analise com diferentes otimizações: O2, O3, etc
