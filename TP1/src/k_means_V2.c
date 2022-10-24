@@ -104,8 +104,17 @@ int update_cluster_points(Point *allpoints, Point *allcentroids, Cluster *cluste
     for (i = 0; i < N; i++)
     {
 
-        int newCluster;
-        float diff = 100;
+        int current_cluster = allpoints[i]->nCluster;
+        float diff;
+        if (current_cluster == -1)
+        {
+            diff = 100;
+        }
+        else
+        {
+            diff = determineDistance(allpoints[i], allcentroids[current_cluster]);
+            // printf("%f\n", diff);
+        }
 
         // calcula a distância para cada um dos centroids
         int j;
@@ -114,17 +123,12 @@ int update_cluster_points(Point *allpoints, Point *allcentroids, Cluster *cluste
             // determina a distância entre cada ponto e cada cluster
             diff_temp = determineDistance(allpoints[i], allcentroids[j]);
             // verifica se deve mudar o número do cluster ou não...
-            if (diff_temp < diff)
+            if (diff_temp < diff && j != current_cluster)
             {
                 diff = diff_temp;
-                newCluster = j;
+                points_changed++;
+                allpoints[i]->nCluster = j;
             }
-        }
-
-        if (allpoints[i]->nCluster != newCluster)
-        {
-            allpoints[i]->nCluster = newCluster;
-            points_changed++;
         }
     }
     return points_changed;
@@ -139,6 +143,7 @@ void determine_new_centroid(int size[4], Point *allpoints, Point *allcentroids, 
         allcentroids[i]->x = 0;
         allcentroids[i]->y = 0;
         size[i] = 0;
+        // printPoint(allcentroids[i]);
     }
     for (i = 0; i < N; i++)
     {
