@@ -90,8 +90,8 @@ float determineDistance(Point p, Point centroid)
 {
     float diff_x = (p->x) - (centroid->x);
     float diff_y = (p->y) - (centroid->y);
-    float aux = pow(diff_x, 2) + pow(diff_y, 2);
-
+    float aux = diff_x * diff_x + diff_y * diff_y;
+    // pow(diff_x, 2) + pow(diff_y, 2);
     return aux; // sqrtf(aux);
 }
 
