@@ -24,31 +24,49 @@ Questões:
 #define N 10000000
 #define K 4
 
-typedef struct point
+struct point
 {
     float x;
     float y;
     int nCluster;
-} * Point;
+};
+// Size struct = 12
 
-typedef struct Cluster
-{
-    int *array_pos;
-    int centroid; // Pos of centroid in the array
-} Cluster;
+struct point array_points[N];
+struct point array_centroids[K];
 
 // Function that allows use to print out the value of a Point:
-void printPoint(Point p)
+void printPoint(struct point p)
 {
-    printf("x = %f / y = %f / nCluster = %d \n", p->x, p->y, p->nCluster);
+    printf("x = %f \n", p.x);
 }
 
 // Function that returns a new array of Points:
 // O: 1
-Point *createArrayPoints(void)
+/*Point *createArrayPoints(void)
 {
     Point *array_points = malloc(sizeof(Point) * N);
     return array_points;
+}*/
+
+/*void free_array_points(Point *array_points)
+{
+    int i = 0;
+    for (i = 0; i < N; i++)
+    {
+        free(array_points[i]);
+    }
+    free(array_points);
+}
+
+void free_array_centroids(Point *array_centroids)
+{
+    int i = 0;
+    for (i = 0; i < K; i++)
+    {
+        free(array_centroids[i]);
+    }
+    free(array_centroids);
 }
 
 // O: 1
@@ -57,53 +75,48 @@ Point *createArrayCentroids(void)
 {
     Point *array_centroids = malloc(sizeof(Point) * K);
     return array_centroids;
-}
+}*/
 
 // Function where the array of points and the array of centroids are populated:
 
 // O = N+K;
-void init(Point *array_points, Point *array_centroids)
+void init(struct point allpoints[N], struct point allcentroids[K])
 {
     // Create new points:
     int i;
     for (i = 0; i < N; i++)
     {
-        array_points[i] = (Point)malloc(sizeof(struct point));
-        array_points[i]->x = (float)rand() / RAND_MAX;
-        array_points[i]->y = (float)rand() / RAND_MAX;
-        array_points[i]->nCluster = -1;
+        allpoints[i].x = (float)rand() / RAND_MAX;
+        allpoints[i].y = (float)rand() / RAND_MAX;
+        allpoints[i].nCluster = -1;
     }
 
     // Assign each point to a cluster:
     int j;
     for (j = 0; j < K; j++)
     {
-        array_centroids[j] = (Point)malloc(sizeof(struct point));
-        array_centroids[j]->x = array_points[j]->x;
-        array_centroids[j]->y = array_points[j]->y;
-        array_centroids[j]->nCluster = -1;
+        allcentroids[j].x = allpoints[j].x;
+        allcentroids[j].y = allpoints[j].y;
     }
 }
 
 // O = 1
-float determineDistance(Point p, Point centroid)
+float determineDistance(struct point p, struct point centroid)
 {
-    float diff_x = (p->x) - (centroid->x);
-    float diff_y = (p->y) - (centroid->y);
+    float diff_x = (p.x) - (centroid.x);
+    float diff_y = (p.y) - (centroid.y);
     float aux = diff_x * diff_x + diff_y * diff_y;
-    // pow(diff_x, 2) + pow(diff_y, 2);
-    return aux; // sqrtf(aux);
+    return aux;
 }
 
 // O = N*K
-int update_cluster_points(Point *allpoints, Point *allcentroids, Cluster *clusters)
+int update_cluster_points(struct point allpoints[N], struct point allcentroids[K])
 {
     int points_changed = 0;
     float diff_temp;
     int i;
     for (i = 0; i < N; i++)
     {
-
         int newCluster;
         float diff = 100;
 
@@ -121,9 +134,9 @@ int update_cluster_points(Point *allpoints, Point *allcentroids, Cluster *cluste
             }
         }
 
-        if (allpoints[i]->nCluster != newCluster)
+        if (allpoints[i].nCluster != newCluster)
         {
-            allpoints[i]->nCluster = newCluster;
+            allpoints[i].nCluster = newCluster;
             points_changed++;
         }
     }
@@ -131,27 +144,36 @@ int update_cluster_points(Point *allpoints, Point *allcentroids, Cluster *cluste
 }
 
 // O = 2*K + N
-void determine_new_centroid(int size[4], Point *allpoints, Point *allcentroids, Cluster *c)
+void determine_new_centroid(int size[K], struct point allpoints[N], struct point allcentroids[K])
 {
     int i;
     for (i = 0; i < K; i++)
     {
-        allcentroids[i]->x = 0;
-        allcentroids[i]->y = 0;
+        allcentroids[i].x = 0;
+        allcentroids[i].y = 0;
         size[i] = 0;
     }
     for (i = 0; i < N; i++)
     {
-        int nCluster = allpoints[i]->nCluster;
-        allcentroids[nCluster]->x += allpoints[i]->x;
-        allcentroids[nCluster]->y += allpoints[i]->y;
+        int nCluster = allpoints[i].nCluster;
+        allcentroids[nCluster].x += allpoints[i].x;
+        allcentroids[nCluster].y += allpoints[i].y;
         size[nCluster]++;
     }
 
+    /*allcentroids[0]->x = allcentroids[0]->x / size[0];
+    allcentroids[0]->y = allcentroids[0]->y / size[0];
+    allcentroids[1]->x = allcentroids[1]->x / size[1];
+    allcentroids[1]->y = allcentroids[1]->y / size[1];
+    allcentroids[2]->x = allcentroids[2]->x / size[2];
+    allcentroids[2]->y = allcentroids[2]->y / size[2];
+    allcentroids[3]->x = allcentroids[3]->x / size[3];
+    allcentroids[3]->y = allcentroids[3]->y / size[3];*/
+
     for (i = 0; i < K; i++)
     {
-        allcentroids[i]->x = allcentroids[i]->x / size[i];
-        allcentroids[i]->y = allcentroids[i]->y / size[i];
+        allcentroids[i].x = allcentroids[i].x / size[i];
+        allcentroids[i].y = allcentroids[i].y / size[i];
     }
     return;
 }
@@ -161,29 +183,28 @@ void main()
     clock_t start, end;
     start = clock();
 
-    Cluster clusters[K];
     int points_changed = -1;
 
     // 1
-    Point *array_points = createArrayPoints();
+    // float array_points[N]; //= createArrayPoints();
     // 1
-    Point *centroids = createArrayCentroids();
+    // Point centroids[K]; //= createArrayCentroids();
     // N+K
-    init(array_points, centroids);
 
-    int lenClusters[4];
+    init(array_points, array_centroids);
+    int lenClusters[K];
 
     // N*K
-    points_changed = update_cluster_points(array_points, centroids, clusters);
+    points_changed = update_cluster_points(array_points, array_centroids);
 
-    // It = 40
+    // It = 39
     int nIterations = 0;
     do
     {
         // 2K+N
-        determine_new_centroid(lenClusters, array_points, centroids, clusters);
+        determine_new_centroid(lenClusters, array_points, array_centroids);
         // N*K
-        points_changed = update_cluster_points(array_points, centroids, clusters);
+        points_changed = update_cluster_points(array_points, array_centroids);
         nIterations++;
     } while (points_changed != 0);
 
@@ -195,9 +216,15 @@ void main()
     // K
     for (i = 0; i < K; i++)
     {
-        printf("Center: (%.3f,%.3f) : Size %d \n", centroids[i]->x, centroids[i]->y, lenClusters[i]);
+        printf("Center: (%.3f,%.3f) : Size %d \n", array_centroids[i].x, array_centroids[i].y, lenClusters[i]);
     }
     printf("%f\n", timeSpent);
 
+    // free_array_centroids(centroids);
+    // free_array_points(array_points);
+
     // gcc -O2 kmeans.c -o kmeans -lm
+    return;
 }
+
+// Usar o -funroll-loops não justifica muito e aplicar a vetorização também não justificou muito

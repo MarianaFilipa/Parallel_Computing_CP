@@ -72,6 +72,26 @@ Point *createArrayCentroids(void)
     return array_centroids;
 }
 
+void free_array_points(Point *array_points)
+{
+    int i = 0;
+    for (i = 0; i < N; i++)
+    {
+        free(array_points[i]);
+    }
+    free(array_points);
+}
+
+void free_array_centroids(Point *array_centroids)
+{
+    int i = 0;
+    for (i = 0; i < K; i++)
+    {
+        free(array_centroids[i]);
+    }
+    free(array_centroids);
+}
+
 // Function where the array of points and the array of centroids are populated:
 void init(Point *array_points, Point *array_centroids)
 {
@@ -113,18 +133,8 @@ int update_cluster_points(Point *allpoints, Point *allcentroids, Cluster *cluste
     int i;
     for (i = 0; i < N; i++)
     {
-
-        int current_cluster = allpoints[i]->nCluster;
-        float diff;
-        if (current_cluster == -1)
-        {
-            diff = 100;
-        }
-        else
-        {
-            diff = determineDistance(allpoints[i], allcentroids[current_cluster]);
-            // printf("%f\n", diff);
-        }
+        int newCluster;
+        float diff = 100;
 
         // calcula a distância para cada um dos centroids
         int j;
@@ -133,12 +143,17 @@ int update_cluster_points(Point *allpoints, Point *allcentroids, Cluster *cluste
             // determina a distância entre cada ponto e cada cluster
             diff_temp = determineDistance(allpoints[i], allcentroids[j]);
             // verifica se deve mudar o número do cluster ou não...
-            if (diff_temp < diff && j != current_cluster)
+            if (diff_temp < diff)
             {
                 diff = diff_temp;
-                points_changed++;
-                allpoints[i]->nCluster = j;
+                newCluster = j;
             }
+        }
+
+        if (allpoints[i]->nCluster != newCluster)
+        {
+            allpoints[i]->nCluster = newCluster;
+            points_changed++;
         }
     }
     return points_changed;
@@ -203,6 +218,9 @@ void main()
         printf("Center: (%.3f,%.3f) : Size %d \n", centroids[i]->x, centroids[i]->y, lenClusters[i]);
     }
     printf("%f\n", timeSpent);
+
+    free_array_centroids(centroids);
+    free_array_points(array_points);
 
     // gcc -O2 kmeans.c -o kmeans -lm
 }

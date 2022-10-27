@@ -4,13 +4,12 @@ SRC = src/
 INCLUDES = include/
 EXEC = k_means
 
-CFLAGS = -O2
-CFLAGS_MAT = -lm
+CFLAGS = -O2 -funroll-loops -ftree-vectorize -msse4
 
 .DEFAULT_GOAL = k_means
 
 k_means: $(SRC)k_means.c
-	$(CC) $(CFLAGS) $(SRC)k_means.c -o $(BIN)$(EXEC) $(CFLAGS_MAT)
+	$(CC) $(CFLAGS) $(SRC)k_means.c -o $(BIN)$(EXEC)
 
 clean:
 	rm -r bin/*

@@ -17,19 +17,37 @@ Este trabalho tem como objetivo avaliar a aprendizagem das técnicas de otimiza�
 (ii) Otimizações realizadas e justificação (30%)
 (iii) Legibilidade do código e relatório (20%)
 
-
-
 v2 remoção da op sqrt no calculo da distancia
 v3 remover determinação de distancia inicial e menos um acesso à memória - menos um miss
-
+v4 remover o pow
 
 ver dependencias assembly
 analisar complexidade
 localidade espacial e temporal se existe ou se é possivel ter
 vetorização
 
-loop-unroll comparação das distancias  -> tira jumps
-
-
+loop-unroll comparação das distancias -> tira jumps
 
 perguntas : se é necessária a analise com diferentes otimizações: O2, O3, etc
+
+//-----------------------------------------------------------
+Podemos ver que com as otimizações que fizemos até aqui obtemos:
+60% => update_cluster_points
+30% => determine_new_centroid
+1,5% => init
+
+//A testar:
+
+Dependências de atributos:
+Spatial/Temporal locality:
+Loop Unrool (not very good => show why)
+Vetorization (não melhora em nenhum aspeto => por causa do malloc)
+
+V1: og
+V2: sem mat
+V3: loop unroll
+V4: loop unroll + vetorização
+V5: sem malloc
+V6: sem malloc + loop unroll
+V7: sem malloc + loop unroll + vetorização
+V8: sem malloc + vetorização
