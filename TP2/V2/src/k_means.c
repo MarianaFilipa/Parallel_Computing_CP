@@ -23,7 +23,12 @@ void init(struct point *allpoints, int *nClustersPoint, struct point *allcentroi
     {
         allpoints[i].x = (float)rand() / RAND_MAX;
         allpoints[i].y = (float)rand() / RAND_MAX;
-        nClustersPoint[i] = 0;
+        // nClustersPoint[i] = 0; // Aqui deixará de haver localidade espacial:
+    }
+
+    for (i = 0; i < N; i++)
+    {
+        nClustersPoint[i] = 0; // Aqui deixará de haver localidade espacial:
     }
 
     // Assign the first four point to a centroid:
@@ -54,28 +59,6 @@ int update_cluster_points(struct point *allpoints, int *nClustersPoint, struct p
     int i;
     for (i = 0; i < N; i++)
     {
-        // calculates the distance between a certain point and all the centroids
-        /*float arr[K];
-
-        int j;
-        for (j = 0; j < K; j++)
-        {
-            // calculates the distance
-            arr[j] = determineDistance(allpoints[i], allcentroids[j]);
-        }
-
-        float diff = arr[0];
-        int newCluster = 0;
-        for (j = 1; j < K; j++)
-        {
-            // verifies if it should change cluster or not:
-            if (arr[j] < diff)
-            {
-                diff = arr[j];
-                newCluster = j;
-            }
-        }*/
-
         float dif_temp;
         float diff = 100;
         int newCluster;
@@ -118,18 +101,15 @@ void determine_new_centroid(int *size, int *nClustersPoint, struct point *allpoi
         size[2 * i + 1] = 0;
     }
 
-    // For each point, add its coordinates to the coordinates of a certain center
-
     for (i = 0; i < N; i++)
     {
-        int nCluster = nClustersPoint[i];
+        int nCluster = nClustersPoint[i]; // isto deixa de ter localidade espacial, mas poderá ter localidade temporal
         size[2 * nCluster]++;
         size[2 * nCluster + 1]++;
         allcentroids[nCluster].x += allpoints[i].x;
         allcentroids[nCluster].y += allpoints[i].y;
     }
 
-    // Calculates the mean of the coordinates of all the centroids
     for (i = 0; i < K; i++)
     {
         allcentroids[i].x = allcentroids[i].x / size[2 * i];
@@ -169,17 +149,18 @@ void main(int argc, char *argv[])
     init(array_points, nClustersPoint, array_centroids);
 
     int points_changed;
-    int lenClusters[K * 2];
+    int lenClusters[2 * K];
 
     points_changed = update_cluster_points(array_points, nClustersPoint, array_centroids);
 
     int nIterations = 0;
+
     do
     {
         determine_new_centroid(lenClusters, nClustersPoint, array_points, array_centroids);
         points_changed = update_cluster_points(array_points, nClustersPoint, array_centroids);
         nIterations++;
-    } while (points_changed != 0);
+    } while (nIterations != 21);
 
     printf("%d\n", nIterations);
     int i;
@@ -189,7 +170,8 @@ void main(int argc, char *argv[])
     }
 
     // free(array_centroids);
-    // free(array_points);
+    free(array_points);
+    free(nClustersPoint);
 
     return;
 }
