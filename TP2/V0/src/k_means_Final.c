@@ -104,15 +104,15 @@ int update_cluster_points(struct point allpoints[N], struct point allcentroids[K
 
 // Calculates the mean of the coordenates of all the points that are in a cluster
 // O(2*K + N)
-void determine_new_centroid(int size[K], struct point allpoints[N], struct point allcentroids[K])
+void determine_new_centroid(struct point allpoints[N], struct point allcentroids[K])
 {
+    int size[K];
     // change the coordenates of all the centroids to (0,0)
     int i;
     for (i = 0; i < K; i++)
     {
         allcentroids[i].x = 0;
         allcentroids[i].y = 0;
-        size[i] = 0;
         size[i] = 0;
     }
 
@@ -163,7 +163,6 @@ void main(int argc, char *argv[])
     // Array with all the centroids
     struct point array_centroids[K];
     int points_changed;
-    int lenClusters[K];
 
     init(array_points, array_centroids);
     points_changed = update_cluster_points(array_points, array_centroids);
@@ -171,7 +170,7 @@ void main(int argc, char *argv[])
     int nIterations = 0;
     do
     {
-        determine_new_centroid(lenClusters, array_points, array_centroids);
+        determine_new_centroid(array_points, array_centroids);
         points_changed = update_cluster_points(array_points, array_centroids);
         nIterations++;
     } while (nIterations != 21);
@@ -183,7 +182,7 @@ void main(int argc, char *argv[])
     int i;
     for (i = 0; i < K; i++)
     {
-        printf("Center: (%.3f,%.3f) : Size %d \n", array_centroids[i].x, array_centroids[i].y, lenClusters[i]);
+        printf("Center: (%.3f,%.3f) : Size ? \n", array_centroids[i].x, array_centroids[i].y);
     }
     printf("%f\n", timeSpent);
     free(array_points);
