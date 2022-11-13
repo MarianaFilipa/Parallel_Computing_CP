@@ -3,7 +3,7 @@ BIN = bin/
 SRC = src/
 INCLUDES = include/
 EXEC = k_means
-THREADS = 7
+THREADS = 6
 
 CFLAGS = -O2 -fopenmp
 

@@ -81,7 +81,7 @@ int update_cluster_points(struct point allpoints[N], struct point allcentroids[K
         {
             // calculates the distance
             // diff_temp = determineDistance(allpoints[i].x, allpoints[i].y, allcentroids[j].x, allcentroids[j].y);
-            diff_temp = determineDistance(allpoints[i], allcentroids[j]);
+            diff_temp = determineDistance(allpoints[i], allcentroids[j]); // fp = 5 * N * K
 
             // verifies if it should change cluster or not:
             if (diff_temp < diff)
@@ -104,9 +104,8 @@ int update_cluster_points(struct point allpoints[N], struct point allcentroids[K
 
 // Calculates the mean of the coordenates of all the points that are in a cluster
 // O(2*K + N)
-void determine_new_centroid(struct point allpoints[N], struct point allcentroids[K])
+void determine_new_centroid(int size[K], struct point allpoints[N], struct point allcentroids[K])
 {
-    int size[K];
     // change the coordenates of all the centroids to (0,0)
     int i;
     for (i = 0; i < K; i++)
@@ -163,6 +162,7 @@ void main(int argc, char *argv[])
     // Array with all the centroids
     struct point array_centroids[K];
     int points_changed;
+    int lenClusters[K];
 
     init(array_points, array_centroids);
     points_changed = update_cluster_points(array_points, array_centroids);
@@ -170,7 +170,7 @@ void main(int argc, char *argv[])
     int nIterations = 0;
     do
     {
-        determine_new_centroid(array_points, array_centroids);
+        determine_new_centroid(lenClusters, array_points, array_centroids);
         points_changed = update_cluster_points(array_points, array_centroids);
         nIterations++;
     } while (nIterations != 21);
@@ -182,7 +182,7 @@ void main(int argc, char *argv[])
     int i;
     for (i = 0; i < K; i++)
     {
-        printf("Center: (%.3f,%.3f) : Size ? \n", array_centroids[i].x, array_centroids[i].y);
+        printf("Center: (%.3f,%.3f) : Size %d \n", array_centroids[i].x, array_centroids[i].y, lenClusters[i]);
     }
     printf("%f\n", timeSpent);
     free(array_points);

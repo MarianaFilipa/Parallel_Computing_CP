@@ -5,7 +5,7 @@
 
 int N = 10000000;
 int K = 4;
-int N_THREADS = 5;
+int N_THREADS = 6;
 
 struct point
 {
@@ -73,7 +73,7 @@ int update_cluster_points(struct point allpoints[N], struct point allcentroids[K
 #pragma omp parallel num_threads(N_THREADS)
 
 #pragma omp for private(diff, newCluster, diff_temp) reduction(+ \
-                                                               : points_changed)
+                                                               : points_changed) schedule(static)
     for (int i = 0; i < N; i++)
     {
         diff = 100;
@@ -90,10 +90,8 @@ int update_cluster_points(struct point allpoints[N], struct point allcentroids[K
             {
                 diff = diff_temp;
                 newCluster = j;
-                // printf("T%d: i%d j%d distMenor:%f\n", id, i, j, diff_temp);
             }
         }
-
         // int id = omp_get_thread_num();
         // printf("T%d: i%d\n", id, i);
 
@@ -116,6 +114,7 @@ void determine_new_centroid(int size[K], struct point allpoints[N], struct point
 
     float SumX[K];
     float SumY[K];
+    int sizeA[K];
 
 #pragma omp parallel num_threads(N_THREADS)
     {
@@ -125,20 +124,18 @@ void determine_new_centroid(int size[K], struct point allpoints[N], struct point
         {
             SumX[i] = 0;
             SumY[i] = 0;
-            size[i] = 0;
+            sizeA[i] = 0;
         }
 
 // For each point, add its coordinates to the coordinates of a certain center
 #pragma omp barrier
-#pragma omp single
+#pragma omp for firstprivate(SumX, SumY, sizeA)
+        for (int i = 0; i < N; i++)
         {
-            for (int i = 0; i < N; i++)
-            {
-                int nCluster = allpoints[i].nCluster;
-                SumX[nCluster] += allpoints[i].x;
-                SumY[nCluster] += allpoints[i].y;
-                size[nCluster]++;
-            }
+            int nCluster = allpoints[i].nCluster;
+            SumX[nCluster] += allpoints[i].x;
+            SumY[nCluster] += allpoints[i].y;
+            sizeA[nCluster]++;
         }
 
 // Calculates the mean of the coordinates of all the centroids
@@ -146,12 +143,50 @@ void determine_new_centroid(int size[K], struct point allpoints[N], struct point
 #pragma omp for
         for (int i = 0; i < K; i++)
         {
-            allcentroids[i].x = SumX[i] / size[i];
-            allcentroids[i].y = SumY[i] / size[i];
+            allcentroids[i].x = SumX[i] / sizeA[i];
+            allcentroids[i].y = SumY[i] / sizeA[i];
+            size[i] = sizeA[i];
+        }
+    }
+
+    return;
+}
+
+/*void determine_new_centroid(int size[K], struct point allpoints[N], struct point allcentroids[K])
+{
+    float SumX[K];
+    float SumY[K];
+    int sizeA[K];
+
+#pragma omp parallel num_threads(N_THREADS)
+    {
+        // change the coordenates of all the centroids to (0,0)
+        for (int i = 0; i < K; i++)
+        {
+            SumX[i] = 0;
+            SumY[i] = 0;
+            sizeA[i] = 0;
+        }
+
+        // For each point, add its coordinates to the coordinates of a certain center
+        for (int i = 0; i < N; i++)
+        {
+            int nCluster = allpoints[i].nCluster;
+            SumX[nCluster] += allpoints[i].x;
+            SumY[nCluster] += allpoints[i].y;
+            sizeA[nCluster]++;
+        }
+
+        // Calculates the mean of the coordinates of all the centroids
+        for (int i = 0; i < K; i++)
+        {
+            allcentroids[i].x = SumX[i] / sizeA[i];
+            allcentroids[i].y = SumY[i] / sizeA[i];
+            size[i] = sizeA[i];
         }
     }
     return;
-}
+}*/
 
 void main(int argc, char *argv[])
 {
