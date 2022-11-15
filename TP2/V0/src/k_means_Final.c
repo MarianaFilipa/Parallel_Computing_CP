@@ -71,7 +71,6 @@ int update_cluster_points(struct point allpoints[N], struct point allcentroids[K
     int i;
     for (i = 0; i < N; i++)
     {
-
         int newCluster;
         float diff = 100;
 
