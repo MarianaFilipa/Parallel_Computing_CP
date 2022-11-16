@@ -177,7 +177,7 @@ void main(int argc, char *argv[])
     end = clock();
     double timeSpent = (double)(end - start) / CLOCKS_PER_SEC;
 
-    printf("%d\n", nIterations);
+    printf("%d\n", nIterations - 1);
     int i;
     for (i = 0; i < K; i++)
     {
