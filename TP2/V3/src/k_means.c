@@ -53,9 +53,10 @@ int update_cluster_points(struct point allpoints[N], struct point allcentroids[K
                           : points_changed)
         for (int i = 0; i < N; i++)
         {
-            diff = 100;
+            diff = determineDistance(allpoints[i], allcentroids[0]);
+            newCluster = 0;
             // calculates the distance between a certain point and all the centroids
-            for (int j = 0; j < K; j++)
+            for (int j = 1; j < K; j++)
             {
                 // calculates the distance
                 diff_temp = determineDistance(allpoints[i], allcentroids[j]);
@@ -114,9 +115,9 @@ int update_cluster_points(struct point allpoints[N], struct point allcentroids[K
 
 void determine_new_centroid(int size[K], struct point allpoints[N], struct point allcentroids[K])
 {
-    float SumX[K];
-    float SumY[K];
-    int sizeA[K];
+    float *SumX = malloc(sizeof(float) * 32);
+    float *SumY = malloc(sizeof(float) * 32);
+    int *sizeA = malloc(sizeof(float) * 32);
 
 #pragma omp parallel num_threads(N_THREADS)
     {
