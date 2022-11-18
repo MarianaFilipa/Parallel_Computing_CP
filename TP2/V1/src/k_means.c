@@ -5,7 +5,7 @@
 
 int N = 10000000;
 int K = 4;
-int N_THREADS = 4;
+int N_THREADS = 1;
 
 struct point
 {
@@ -47,7 +47,7 @@ int update_cluster_points(struct point allpoints[N], struct point allcentroids[K
 #pragma omp parallel num_threads(N_THREADS)
     {
         float diff_temp;
-        int newCluster;
+        int newCluster = -1;
         float diff;
 #pragma omp for reduction(+ \
                           : points_changed)
@@ -168,7 +168,7 @@ int kmeans(int lenClusters[K], struct point array_points[N], struct point array_
     return nIterations;
 }
 
-void main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     if (argc == 4)
     {
@@ -198,5 +198,5 @@ void main(int argc, char *argv[])
     free(array_points);
     free(array_centroids);
     free(lenClusters);
-    return;
+    return 0;
 }
