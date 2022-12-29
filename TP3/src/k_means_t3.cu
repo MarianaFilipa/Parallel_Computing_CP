@@ -2,8 +2,8 @@
 
 int N = 10000000;
 int K = 4;
-int N_THREADS = 50000;
-int N_BLOCKS = 200;
+int N_THREADS = 2000;
+int N_BLOCKS = 5000;
 
 using namespace std;
 
@@ -63,16 +63,17 @@ __global__ void update_cluster_points(struct point *allpoints, struct point *all
     int lid = threadIdx.x; // local thread id within a block
 
     // Bloco de memória que só é partilhado por um bloco de threads
-    __shared__ float sharedPoints[N_THREADS];
+    // __shared__ struct point sharedPoints[2000];
     // Cada thread copia um valor do allpoints para a memória shared
-    sharedPoints[lid] = allpoints[id];
+    // sharedPoints[lid] = allpoints[id];
 
     // Bloco com os 4 centroids que é partilhado pelos pontos
-    __shared__ float sharedCentroids[K];
+    __shared__ struct point sharedCentroids[4];
     if (lid >= 0 && lid < 4)
     {
         sharedCentroids[lid] = allcentroids[lid];
     }
+    __syncthreads();
 
     if (id >= 0 && id < N)
     {
@@ -81,7 +82,7 @@ __global__ void update_cluster_points(struct point *allpoints, struct point *all
         for (int j = 0; j < K; j++)
         {
             // calculates the distance
-            diff_temp = determineDistance(sharedPoints[lid], sharedCentroids[lid]);
+            diff_temp = determineDistance(allpoints[id], sharedCentroids[lid]);
 
             if (diff_temp < diff)
             {
