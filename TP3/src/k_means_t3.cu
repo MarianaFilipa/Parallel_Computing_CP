@@ -2,8 +2,8 @@
 
 int N = 10000000;
 int K = 4;
-int N_THREADS = 2000;
-int N_BLOCKS = 5000;
+int N_THREADS = 10000;
+int N_BLOCKS = 1000;
 
 using namespace std;
 
@@ -53,7 +53,7 @@ __device__ float determineDistance(struct point p, struct point c)
 */
 
 // Function where we determine if a point should change the cluster it is currently assign to
-__global__ void update_cluster_points(struct point *allpoints, struct point *allcentroids, int K, int N, int N_THREADS) // int *points_changed,
+__global__ void update_cluster_points(struct point *allpoints, struct point *allcentroids, int K, int N) // int *points_changed,
 {
     float diff_temp;     // Variável privada
     int newCluster = -1; // Variável privada
@@ -62,18 +62,12 @@ __global__ void update_cluster_points(struct point *allpoints, struct point *all
     int id = blockIdx.x * blockDim.x + threadIdx.x;
     int lid = threadIdx.x; // local thread id within a block
 
-    // Bloco de memória que só é partilhado por um bloco de threads
-    // __shared__ struct point sharedPoints[2000];
-    // Cada thread copia um valor do allpoints para a memória shared
-    // sharedPoints[lid] = allpoints[id];
-
-    // Bloco com os 4 centroids que é partilhado pelos pontos
-    __shared__ struct point sharedCentroids[4];
-    if (lid >= 0 && lid < 4)
+    __shared__ struct point sharedCentroids[4]; // Bloco com os 4 centroids que é partilhado pelos pontos
+    if (0 <= lid && lid < 4)
     {
         sharedCentroids[lid] = allcentroids[lid];
     }
-    __syncthreads();
+    __syncthreads(); // Wait for all threads within a block
 
     if (id >= 0 && id < N)
     {
@@ -82,7 +76,7 @@ __global__ void update_cluster_points(struct point *allpoints, struct point *all
         for (int j = 0; j < K; j++)
         {
             // calculates the distance
-            diff_temp = determineDistance(allpoints[id], sharedCentroids[lid]);
+            diff_temp = determineDistance(allpoints[id], sharedCentroids[j]); //, sharedCentroidsY[j]
 
             if (diff_temp < diff)
             {
@@ -138,16 +132,51 @@ __global__ void print_data(int K, float *SumX, float *SumY, int *size)
 
 __global__ void sum_all_points(struct point *allpoints, int *size, float *SumX, float *SumY, int N)
 {
-    int id = blockIdx.x * blockDim.x + threadIdx.x;
-    if (id >= 0 && id < N)
+    // int id = blockIdx.x * blockDim.x + threadIdx.x;
+    int lid = threadIdx.x;
+
+    int bloco = blockIdx.x;
+    printf("%d\n", bloco);
+
+    if (lid == 0) // Se for a thread 0 de cada bloco
     {
-        int nCluster = allpoints[id].nCluster;
-        atomicAdd(&SumX[nCluster], allpoints[id].x);
-        // SumX[nCluster] += allpoints[id].x; // possíveis data races
-        atomicAdd(&SumY[nCluster], allpoints[id].y);
-        // SumY[nCluster] += allpoints[id].y; // possíveis data races
-        atomicAdd(&size[nCluster], 1);
-        // sizeA[nCluster]++; // possíveis data races
+        float SumXPrivate[4];
+        float SumYPrivate[4];
+        int sizePrivate[4];
+
+        for (int i = 0; i < 4; i++)
+        {
+            SumXPrivate[i] = 0;
+            SumYPrivate[i] = 0;
+            sizePrivate[i] = 0;
+        }
+
+        int bloco = blockIdx.x;
+        // printf("bloco: %d ", bloco);
+        int blocoSize = blockDim.x;
+        // printf("blocoDim: %d ", blocoSize);
+
+        for (int i = 0; i < blocoSize; i++)
+        {
+            /* Para cada valor do array allpoints,
+            se esse valor "pretencer" ao intervalo trabalho pelo bloco desta thread...
+            Thread faz a "soma"*/
+
+            int pos = bloco * blocoSize + i;
+            // printf("bloco: %d | i: %d | pos: %d\n", bloco, i, pos);
+
+            int nCluster = allpoints[pos].nCluster;
+            SumXPrivate[nCluster] += allpoints[pos].x;
+            SumYPrivate[nCluster] += allpoints[pos].y;
+            sizePrivate[nCluster]++;
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            atomicAdd(&SumX[i], SumXPrivate[i]);
+            atomicAdd(&SumY[i], SumYPrivate[i]);
+            atomicAdd(&size[i], sizePrivate[i]);
+        }
     }
 }
 
@@ -178,7 +207,8 @@ int kmeans(int *lenClusters, struct point *array_points, struct point *array_cen
     cudaMalloc((void **)&SumY, sizeof(float) * K);
     checkCUDAError("mem malloc");
 
-    update_cluster_points<<<N_THREADS, N_BLOCKS>>>(darray_points, darray_centroids, K, N, N_THREADS); //&points_changed,
+    update_cluster_points<<<N_THREADS, N_BLOCKS>>>(darray_points, darray_centroids, K, N); //&points_changed,
+    checkCUDAError("error first update");
     do
     {
         // points_changed = 0;
@@ -187,7 +217,7 @@ int kmeans(int *lenClusters, struct point *array_points, struct point *array_cen
         sum_all_points<<<N_THREADS, N_BLOCKS>>>(darray_points, dlenClusters, SumX, SumY, N);
         mean_sums<<<N_THREADS, N_BLOCKS>>>(dlenClusters, SumX, SumY, darray_centroids, K);
 
-        update_cluster_points<<<N_THREADS, N_BLOCKS>>>(darray_points, darray_centroids, K, N, N_THREADS); //&points_changed,
+        update_cluster_points<<<N_THREADS, N_BLOCKS>>>(darray_points, darray_centroids, K, N); //&points_changed,
         nIterations++;
     } while (nIterations != 21);
 

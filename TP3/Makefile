@@ -1,4 +1,4 @@
-THREADS = 100
+THREADS = 10000
 SHELL = /bin/sh
 BIN_NAME = k_means
 
@@ -38,6 +38,6 @@ clean:
 	rm -f $(BUILD_DIR)/* $(BIN_DIR)/* 
 
 runseq:
-	./$(BIN_DIR)/$(BIN_NAME) 10000 $(CP_CLUSTERS)
+	./$(BIN_DIR)/$(BIN_NAME) 10000000 $(CP_CLUSTERS)
 runpar:
-	./$(BIN_DIR)/$(BIN_NAME) 10000 $(CP_CLUSTERS) $(THREADS)
+	./$(BIN_DIR)/$(BIN_NAME) 10000000 $(CP_CLUSTERS) $(THREADS)

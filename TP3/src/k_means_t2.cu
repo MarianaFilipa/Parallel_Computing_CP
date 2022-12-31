@@ -132,7 +132,6 @@ __global__ void sum_all_points(struct point *allpoints, int *size, float *SumX, 
 
 int kmeans(int *lenClusters, struct point *array_points, struct point *array_centroids, int K, int N)
 {
-
     // int points_changed = 0;
     int nIterations = 0;
 
