@@ -1,4 +1,4 @@
-THREADS = 10000
+THREADS = 100
 SHELL = /bin/sh
 BIN_NAME = k_means
 
