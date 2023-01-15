@@ -3,7 +3,7 @@
 #include <time.h>
 #include <omp.h>
 
-int N = 10000000;
+int N = 100; // 00000;
 int K = 4;
 int N_THREADS = 4;
 
@@ -48,40 +48,49 @@ float determineDistance(struct point p, struct centroid c)
 /* Será que o ganho em tempo/speed up compensa ter este bocado de código paralelizado*/
 void initClusters(float *SumX, float *SumY, int *size)
 {
-#pragma omp for
+    /*#pragma omp single
+        {
+            for (int i = 0; i < K; i++)
+            {
+    #pragma omp task
+                SumX[i] = 0;
+    #pragma omp task
+                SumY[i] = 0;
+    #pragma omp task
+                size[i] = 0;
+            }
+    #pragma omp taskwait
+        }*/
+
+#pragma omp for // schedule(dynamic)
     for (int i = 0; i < K; i++)
     {
         SumX[i] = 0;
         SumY[i] = 0;
         size[i] = 0;
     }
+#pragma omp barrier
 }
 
 void divideSums(float *SumX, float *SumY, int *size, int *sizeAux, struct centroid *allcentroids)
 {
-    /*#pragma omp for simd
-        // Calculates the mean of the coordinates of all the centroids
-        for (int i = 0; i < K; i++)
-        {
-            SumX[i] = SumX[i] / sizeAux[i];
-            SumY[i] = SumY[i] / sizeAux[i];
-        }
-    #pragma omp barrier
-    #pragma omp for
-        for (int i = 0; i < K; i++)
-        {
-            size[i] = sizeAux[i];
-            allcentroids[i].x = SumX[i];
-            // SumX[i] = 0;
-            allcentroids[i].y = SumY[i];
-            // SumY[i] = 0;
-            // size[i] = sizeAux[i];
-            // sizeAux[i] = 0;
-        }
-    #pragma omp barrier
-    */
+#pragma omp for simd
+    // Calculates the mean of the coordinates of all the centroids
+    for (int i = 0; i < K; i++)
+    {
+        SumX[i] = SumX[i] / sizeAux[i];
+        SumY[i] = SumY[i] / sizeAux[i];
+    }
+#pragma omp barrier
+#pragma omp for
+    for (int i = 0; i < K; i++)
+    {
+        size[i] = sizeAux[i];
+        allcentroids[i].x = SumX[i];
+        allcentroids[i].y = SumY[i];
+    }
 
-#pragma omp single
+/*#pragma omp single
     {
         for (int i = 0; i < K; i++)
         {
@@ -99,8 +108,16 @@ void divideSums(float *SumX, float *SumY, int *size, int *sizeAux, struct centro
             }
         }
 #pragma omp taskwait
-    }
+    }*/
 #pragma omp barrier
+}
+
+// Poderá haver misses
+void addValues(float *SumX, float *SumY, int *size, int nCluster, float x, float y)
+{
+    SumX[nCluster] += x;
+    SumY[nCluster] += y;
+    size[nCluster]++;
 }
 
 // Function where we determine if a point should change the cluster it is currently assign to
@@ -117,8 +134,8 @@ void update_cluster_points(struct point *allpoints, struct centroid *allcentroid
         float diff_temp, diff;
         int newCluster = -1;
 
-        // initClusters(SumX, SumY, sizeAux); // Inicializa os valores dos arrays privados a 0.
-#pragma omp barrier // Espera que todos os valores dos arrays partilhados estejam a 0
+        initClusters(SumX, SumY, sizeAux); // Inicializa os valores dos arrays partilhados a 0.
+                                           //  Espera que todos os valores dos arrays partilhados estejam a 0
 
 #pragma omp for reduction(+ \
                           : SumX, SumY, sizeAux) // Atribui a cada thread um conjunto de iterações do ciclo for
@@ -141,10 +158,9 @@ void update_cluster_points(struct point *allpoints, struct centroid *allcentroid
                 allpoints[i].nCluster = newCluster;
             }
             // Cada thread faz esta soma nas suas cópias
-            SumX[newCluster] += allpoints[i].x;
-            SumY[newCluster] += allpoints[i].y;
-            sizeAux[newCluster]++;
-        } // Ao fechar a secção paralela seria de esperar que os valores dos sums fossem adicionados
+            addValues(SumX, SumY, sizeAux, newCluster, allpoints[i].x, allpoints[i].y);
+
+        } // Implicit barrier after for
 #pragma omp barrier
         divideSums(SumX, SumY, size, sizeAux, allcentroids);
     }

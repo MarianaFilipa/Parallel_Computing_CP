@@ -176,30 +176,29 @@ __global__ void sum_all_points(struct point *allpoints, int *size, float *SumX, 
 
 int kmeans(int *lenClusters, struct point *array_points, struct point *array_centroids, int K, int N)
 {
-    // int points_changed = 0;
+    // -------- Sequencial ----------
     int nIterations = 0;
 
-    init(array_points, array_centroids, K, N);
-    chrono::steady_clock::time_point begin = chrono::steady_clock::now();
+    init(array_points, array_centroids, K, N);                            // Initialize array points & centroids
+    chrono::steady_clock::time_point begin = chrono::steady_clock::now(); // Start Clock
 
     struct point *darray_points; // Array with all the points of this program, for the device memory
     cudaMalloc((void **)&darray_points, sizeof(struct point) * N);
-    cudaMemcpy(darray_points, array_points, sizeof(struct point) * N, cudaMemcpyHostToDevice);
+    cudaMemcpy(darray_points, array_points, sizeof(struct point) * N, cudaMemcpyHostToDevice); // Copy points to device
 
     struct point *darray_centroids; // Array with all the centroids, for the device memory
     cudaMalloc((void **)&darray_centroids, sizeof(struct point) * K);
-    cudaMemcpy(darray_centroids, array_centroids, sizeof(struct point) * K, cudaMemcpyHostToDevice);
+    cudaMemcpy(darray_centroids, array_centroids, sizeof(struct point) * K, cudaMemcpyHostToDevice); // Copy centroids to device
 
     int *dlenClusters;
     cudaMalloc((void **)&dlenClusters, sizeof(int) * K);
-    checkCUDAError("mem allocation");
 
     float *SumX;
     cudaMalloc((void **)&SumX, sizeof(float) * K);
 
     float *SumY;
     cudaMalloc((void **)&SumY, sizeof(float) * K);
-    checkCUDAError("mem malloc");
+    checkCUDAError("Memory Allocation");
 
     // initialize_sums_and_size<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, K); // Coloca os SumX a 0
     // cudaDeviceSynchronize();
@@ -208,24 +207,21 @@ int kmeans(int *lenClusters, struct point *array_points, struct point *array_cen
     // checkCUDAError("error first update");
     do
     {
-        // points_changed = 0;
-        // print_data<<<N_THREADS, N_BLOCKS>>>(K, SumX, SumY, dlenClusters);
-        // sum_all_points<<<N_BLOCKS, N_THREADS>>>(darray_points, dlenClusters, SumX, SumY, N);
-
-        initialize_sums_and_size<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, K);
+        // -------- Parallel ----------
+        initialize_sums_and_size<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, K); // initialize SumX, SumY and size
         cudaDeviceSynchronize();
-        update_cluster_points<<<N_BLOCKS, N_THREADS>>>(darray_points, darray_centroids, K, N, SumX, SumY, dlenClusters); //&points_changed,
+        update_cluster_points<<<N_BLOCKS, N_THREADS>>>(darray_points, darray_centroids, K, N, SumX, SumY, dlenClusters); // assign points to cluster and sums
         cudaDeviceSynchronize();
-        mean_sums<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, darray_centroids, K);
+        mean_sums<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, darray_centroids, K); // mean of values of sum, update SumX and SumY
         cudaDeviceSynchronize();
         nIterations++;
     } while (nIterations != 21);
 
-    checkCUDAError("error while");
+    checkCUDAError("k_means While Cycle");
 
     cudaMemcpy(array_centroids, darray_centroids, sizeof(struct point) * K, cudaMemcpyDeviceToHost);
     cudaMemcpy(lenClusters, dlenClusters, sizeof(int) * K, cudaMemcpyDeviceToHost);
-    checkCUDAError("mem cpy 2");
+    checkCUDAError("Memory copy to host");
 
     cudaFree(darray_points);
     cudaFree(darray_centroids);
@@ -236,7 +232,7 @@ int kmeans(int *lenClusters, struct point *array_points, struct point *array_cen
 
     chrono::steady_clock::time_point end = chrono::steady_clock::now();
     cout << endl
-         << "Sequential CPU execution (while): " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " microseconds" << endl
+         << "Execution K_Means:" << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " microseconds" << endl
          << endl;
 
     return nIterations;

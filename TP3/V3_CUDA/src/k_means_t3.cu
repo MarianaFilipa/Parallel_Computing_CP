@@ -50,9 +50,9 @@ __device__ float determineDistance(struct point p, struct point c)
 
 __device__ void addValues(float *SumX, float *SumY, int *size, int nCluster, float x, float y)
 {
-    atomicAdd(&SumX[nCluster], x);
-    atomicAdd(&SumY[nCluster], y);
-    atomicAdd(&size[nCluster], 1);
+    atomicAdd(&SumX[nCluster], x); // É usada para evitar dataraces
+    atomicAdd(&SumY[nCluster], y); // É usada para evitar dataraces
+    atomicAdd(&size[nCluster], 1); // É usada para evitar dataraces
 }
 
 /*
@@ -62,32 +62,19 @@ __device__ void addValues(float *SumX, float *SumY, int *size, int nCluster, flo
 // Function where we determine if a point should change the cluster it is currently assign to
 __global__ void update_cluster_points(struct point *allpoints, struct point *allcentroids, int K, int N, float *SumX, float *SumY, int *size) // int *points_changed,
 {
-    float diff_temp;     // Variável privada
-    int newCluster = -1; // Variável privada
-    float diff;          // Variável privada
+    float diff_temp;     // Variável privada da thread
+    int newCluster = -1; // Variável privada da thread
+    float diff = 100;    // Variável privada da thread
 
     int id = blockIdx.x * blockDim.x + threadIdx.x;
-    int lid = threadIdx.x; // local thread id within a block
-
-    __shared__ struct point sharedCentroids[4]; // Bloco com os 4 centroids que é partilhado pelos pontos
-    //__shared__ float SumXShared[4];
-    //__shared__ float SumYShared[4];
-    //__shared__ int sizeShared[4];
-
-    if (0 <= lid && lid < 4)
-    {
-        sharedCentroids[lid] = allcentroids[lid];
-    }
-    __syncthreads(); // Wait for all threads within a block
 
     if (id >= 0 && id < N)
     {
-        diff = 100;
         // calculates the distance between a certain point and all the centroids
         for (int j = 0; j < K; j++)
         {
             // calculates the distance
-            diff_temp = determineDistance(allpoints[id], sharedCentroids[j]); //, sharedCentroidsY[j]
+            diff_temp = determineDistance(allpoints[id], allcentroids[j]); //, sharedCentroidsY[j]
 
             if (diff_temp < diff)
             {
@@ -95,20 +82,20 @@ __global__ void update_cluster_points(struct point *allpoints, struct point *all
                 newCluster = j;
             }
         }
+
         if (allpoints[id].nCluster != newCluster)
         {
             allpoints[id].nCluster = newCluster; // não deve ter data races
-            // atomicAdd(points_changed, 1);
         }
+
         addValues(SumX, SumY, size, newCluster, allpoints[id].x, allpoints[id].y);
     }
-    __syncthreads(); // Wait for all threads within a block
 }
 
 __global__ void initialize_sums_and_size(int *size, float *SumX, float *SumY, int K)
 {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
-    if (id >= 0 && id < K)
+    if (id >= 0 && id < K) // Each thread from 1 to K, will initialize a certain position of sumX, sumY and size
     {
         SumX[id] = 0;
         SumY[id] = 0;
@@ -119,71 +106,41 @@ __global__ void initialize_sums_and_size(int *size, float *SumX, float *SumY, in
 __global__ void mean_sums(int *size, float *SumX, float *SumY, struct point *allcentroids, int K)
 {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
-    if (id >= 0 && id < K)
+    if (id >= 0 && id < K) // Only one thread will change a certain position
     {
         allcentroids[id].x = SumX[id] / size[id]; // não deve haver data races
         allcentroids[id].y = SumY[id] / size[id]; // não deve haver data races
     }
 }
 
-__global__ void print_data(int K, float *SumX, float *SumY, int *size)
-{
-    int id = blockIdx.x * blockDim.x + threadIdx.x;
-    if (id == 0)
-    {
-        for (int i = 0; i < K; i++)
-        {
-            printf("%f - ", SumX[i]);
-            printf("%f - ", SumY[i]);
-            printf("%d\n", size[i]);
-        }
-    }
-}
-
 /*__syncthreads(); //__syncthreads sincroniza apenas as threads do mesmo bloco
                  // Não encontrei nenhuma solução para sincronizar todas as threads*/
 
-__global__ void sum_all_points(struct point *allpoints, int *size, float *SumX, float *SumY, int N)
-{
-    int id = blockIdx.x * blockDim.x + threadIdx.x;
-    if (id >= 0 && id < N)
-    {
-        int nCluster = allpoints[id].nCluster;
-        atomicAdd(&SumX[nCluster], allpoints[id].x);
-        // SumX[nCluster] += allpoints[id].x; // possíveis data races
-        atomicAdd(&SumY[nCluster], allpoints[id].y);
-        // SumY[nCluster] += allpoints[id].y; // possíveis data races
-        atomicAdd(&size[nCluster], 1);
-        // sizeA[nCluster]++; // possíveis data races
-    }
-}
-
 int kmeans(int *lenClusters, struct point *array_points, struct point *array_centroids, int K, int N)
 {
-    // int points_changed = 0;
+    // -------- Sequencial ----------
     int nIterations = 0;
 
-    init(array_points, array_centroids, K, N);
-    chrono::steady_clock::time_point begin = chrono::steady_clock::now();
+    init(array_points, array_centroids, K, N);                            // Initialize array points & centroids
+    chrono::steady_clock::time_point begin = chrono::steady_clock::now(); // Start Clock
 
     struct point *darray_points; // Array with all the points of this program, for the device memory
     cudaMalloc((void **)&darray_points, sizeof(struct point) * N);
-    cudaMemcpy(darray_points, array_points, sizeof(struct point) * N, cudaMemcpyHostToDevice);
+    cudaMemcpy(darray_points, array_points, sizeof(struct point) * N, cudaMemcpyHostToDevice); // Copy points to device
 
     struct point *darray_centroids; // Array with all the centroids, for the device memory
     cudaMalloc((void **)&darray_centroids, sizeof(struct point) * K);
-    cudaMemcpy(darray_centroids, array_centroids, sizeof(struct point) * K, cudaMemcpyHostToDevice);
+    cudaMemcpy(darray_centroids, array_centroids, sizeof(struct point) * K, cudaMemcpyHostToDevice); // Copy centroids to device
 
     int *dlenClusters;
     cudaMalloc((void **)&dlenClusters, sizeof(int) * K);
-    checkCUDAError("mem allocation");
 
     float *SumX;
     cudaMalloc((void **)&SumX, sizeof(float) * K);
 
     float *SumY;
     cudaMalloc((void **)&SumY, sizeof(float) * K);
-    checkCUDAError("mem malloc");
+    checkCUDAError("Memory Allocation");
 
     // initialize_sums_and_size<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, K); // Coloca os SumX a 0
     // cudaDeviceSynchronize();
@@ -192,35 +149,33 @@ int kmeans(int *lenClusters, struct point *array_points, struct point *array_cen
     // checkCUDAError("error first update");
     do
     {
+        // -------- Parallel ----------
         // points_changed = 0;
-        // print_data<<<N_THREADS, N_BLOCKS>>>(K, SumX, SumY, dlenClusters);
-        // sum_all_points<<<N_BLOCKS, N_THREADS>>>(darray_points, dlenClusters, SumX, SumY, N);
-
-        initialize_sums_and_size<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, K);
+        initialize_sums_and_size<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, K); // initialize SumX, SumY and size
         cudaDeviceSynchronize();
-        update_cluster_points<<<N_BLOCKS, N_THREADS>>>(darray_points, darray_centroids, K, N, SumX, SumY, dlenClusters); //&points_changed,
+        update_cluster_points<<<N_BLOCKS, N_THREADS>>>(darray_points, darray_centroids, K, N, SumX, SumY, dlenClusters); // assign points to cluster and sums
         cudaDeviceSynchronize();
-        mean_sums<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, darray_centroids, K);
+        mean_sums<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, darray_centroids, K); // mean of values of sum, update SumX and SumY
         cudaDeviceSynchronize();
         nIterations++;
     } while (nIterations != 21);
 
-    checkCUDAError("error while");
+    checkCUDAError("k_means While Cycle");
 
     cudaMemcpy(array_centroids, darray_centroids, sizeof(struct point) * K, cudaMemcpyDeviceToHost);
     cudaMemcpy(lenClusters, dlenClusters, sizeof(int) * K, cudaMemcpyDeviceToHost);
-    checkCUDAError("mem cpy 2");
+    checkCUDAError("Memory copy to host");
 
     cudaFree(darray_points);
     cudaFree(darray_centroids);
     cudaFree(dlenClusters);
     cudaFree(SumX);
     cudaFree(SumY);
-    checkCUDAError("mem free");
+    checkCUDAError("memory free");
 
     chrono::steady_clock::time_point end = chrono::steady_clock::now();
     cout << endl
-         << "Sequential CPU execution (while): " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " microseconds" << endl
+         << "Execution K_Means: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " microseconds" << endl
          << endl;
 
     return nIterations;
