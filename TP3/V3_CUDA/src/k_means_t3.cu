@@ -48,12 +48,19 @@ __device__ float determineDistance(struct point p, struct point c)
     return aux;
 }
 
+__device__ void addValues(float *SumX, float *SumY, int *size, int nCluster, float x, float y)
+{
+    atomicAdd(&SumX[nCluster], x);
+    atomicAdd(&SumY[nCluster], y);
+    atomicAdd(&size[nCluster], 1);
+}
+
 /*
     Objetivo: utilizar shared memory, uma vez que esta é mais rápida do que a memória global
 */
 
 // Function where we determine if a point should change the cluster it is currently assign to
-__global__ void update_cluster_points(struct point *allpoints, struct point *allcentroids, int K, int N) // int *points_changed,
+__global__ void update_cluster_points(struct point *allpoints, struct point *allcentroids, int K, int N, float *SumX, float *SumY, int *size) // int *points_changed,
 {
     float diff_temp;     // Variável privada
     int newCluster = -1; // Variável privada
@@ -63,6 +70,10 @@ __global__ void update_cluster_points(struct point *allpoints, struct point *all
     int lid = threadIdx.x; // local thread id within a block
 
     __shared__ struct point sharedCentroids[4]; // Bloco com os 4 centroids que é partilhado pelos pontos
+    //__shared__ float SumXShared[4];
+    //__shared__ float SumYShared[4];
+    //__shared__ int sizeShared[4];
+
     if (0 <= lid && lid < 4)
     {
         sharedCentroids[lid] = allcentroids[lid];
@@ -89,7 +100,9 @@ __global__ void update_cluster_points(struct point *allpoints, struct point *all
             allpoints[id].nCluster = newCluster; // não deve ter data races
             // atomicAdd(points_changed, 1);
         }
+        addValues(SumX, SumY, size, newCluster, allpoints[id].x, allpoints[id].y);
     }
+    __syncthreads(); // Wait for all threads within a block
 }
 
 __global__ void initialize_sums_and_size(int *size, float *SumX, float *SumY, int K)
@@ -172,19 +185,25 @@ int kmeans(int *lenClusters, struct point *array_points, struct point *array_cen
     cudaMalloc((void **)&SumY, sizeof(float) * K);
     checkCUDAError("mem malloc");
 
-    update_cluster_points<<<N_BLOCKS, N_THREADS>>>(darray_points, darray_centroids, K, N); //&points_changed,
-    checkCUDAError("error first update");
+    // initialize_sums_and_size<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, K); // Coloca os SumX a 0
+    // cudaDeviceSynchronize();
+    // update_cluster_points<<<N_BLOCKS, N_THREADS>>>(darray_points, darray_centroids, K, N, SumX, SumY, dlenClusters); //&points_changed,
+    // mean_sums<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, darray_centroids, K);
+    // checkCUDAError("error first update");
     do
     {
         // points_changed = 0;
-        initialize_sums_and_size<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, K);
         // print_data<<<N_THREADS, N_BLOCKS>>>(K, SumX, SumY, dlenClusters);
-        sum_all_points<<<N_BLOCKS, N_THREADS>>>(darray_points, dlenClusters, SumX, SumY, N);
-        mean_sums<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, darray_centroids, K);
+        // sum_all_points<<<N_BLOCKS, N_THREADS>>>(darray_points, dlenClusters, SumX, SumY, N);
 
-        update_cluster_points<<<N_BLOCKS, N_THREADS>>>(darray_points, darray_centroids, K, N); //&points_changed,
+        initialize_sums_and_size<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, K);
+        cudaDeviceSynchronize();
+        update_cluster_points<<<N_BLOCKS, N_THREADS>>>(darray_points, darray_centroids, K, N, SumX, SumY, dlenClusters); //&points_changed,
+        cudaDeviceSynchronize();
+        mean_sums<<<N_BLOCKS, N_THREADS>>>(dlenClusters, SumX, SumY, darray_centroids, K);
+        cudaDeviceSynchronize();
         nIterations++;
-    } while (nIterations != 1);
+    } while (nIterations != 21);
 
     checkCUDAError("error while");
 
